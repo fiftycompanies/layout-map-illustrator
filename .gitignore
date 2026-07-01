@@ -1,0 +1,8 @@
+# generated outputs
+base_blank.png
+tone_*.png
+map_FINAL_*.png
+detected_pads.json
+__pycache__/
+*.pyc
+.DS_Store
