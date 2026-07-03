@@ -41,3 +41,75 @@ Compute `f = output_width / base_width`. Label position = `source_coord × base_
 
 ## Outputs
 `base_blank.png` (anchor) · `tone_*.png` (restyled bg) · `map_FINAL_*_labeled.png` (final) · `coord_map.json`.
+
+---
+
+# v2 — Layered editable map (Figma-ready SVG)
+
+The v1 pipeline outputs a flat PNG. v2 goes further: **every element — land shape,
+water, roads, each tree, each pad, each label — is a separately editable layer.**
+The user drags one SVG into Figma (or Canva) and can reshape the land outline,
+widen the river, move trees, and edit numbers as native objects. Validated on a
+real campground map (56 pads, 60+ labels, zero label corrections).
+
+> **"Accuracy comes from code rendering, not AI generation."**
+> A coordinate ledger (`coord_map.json`) is the single source of truth. Every
+> derivative (flat guide map, hand-drawn tone, illustrated tone, editable SVG)
+> is regenerated from the ledger, so edit requests never cause drift.
+
+## v2 pipeline
+
+**1. Coordinate ledger** — same as v1 step 1 (`detect_pads.py` centroids → `coord_map.json`).
+
+**2. Vectorize the terrain** — [`vtracer`](https://github.com/visioncortex/vtracer)
+(`filter_speckle=6, path_precision=1`) turns the source map into a stacked SVG
+(~100-150 paths). Delete pad/label paths **at the vector level** (stacked output
+means deleting a path just exposes the layer beneath — no holes). Never erase
+pixels instead (stains and rings); never do subpath surgery (damages textures).
+
+**3. Semantic layer split — `scripts/split_by_color.py`**
+Group the stacked paths by fill color into layer files: land base, water, roads,
+paved road, boundary dash — everything unmatched goes into one `detail` layer.
+
+**4. True land shape — `scripts/land_shape.py`**
+vtracer's stacking means "land" = base rectangle *visually carved* by paper-white
+paths on top. Boolean-subtract them (svgpathtools samples the béziers → shapely
+`difference` → `simplify(0.6)`) to get **one editable polygon** the user can
+reshape point-by-point. `pip install svgpathtools shapely`.
+
+**5. Watercolor textures + asset stickers — `scripts/gen_textures.py` + `scripts/cut_sprites.py`**
+Generate 3 seamless watercolor washes (land/water/road) and one **sticker sheet**
+(pines, deciduous trees, bushes, a small building — "wide white gaps, PURE WHITE
+background"). Cut the sheet into individual transparent PNGs (connected components
++ white→alpha).
+
+**6. Assemble the layered SVG** (compose per map — see structure below)
+- Shapes get their texture via **`clipPath` masking**: `<clipPath id="clipLand"><path …/></clipPath>`
+  `<image href="data:image/png;base64,…" clip-path="url(#clipLand)"/>` — so when the
+  user reshapes the outline in Figma, **the texture follows the new shape**.
+- Pads = `<rect rx>` (+ `transform="rotate(deg cx cy)"`), labels = `<text>` (imports as editable text).
+- Add an **asset palette** group beside the canvas (one of each sticker, labeled) so
+  users copy-paste more trees.
+- Layer order: paper → land → water → roads → paved → boundary → detail → trees → pads → labels → palette.
+
+**7. Deliver & verify** — screenshot the SVG headless (`chrome --headless --screenshot
+--force-device-scale-factor=2`) and eyeball region crops. Then hand over the SVG:
+**drag & drop into Figma** imports every group as native, editable layers.
+
+## Figma editing guide (include it in your handoff)
+- The clip-masked shapes import as `Clip path group` → texture `Rectangle` + `clip… > Vector` (the shape).
+- Reshape: select the **Vector** in the Layers panel → press **Enter** (again if the
+  first press only selects) → point-edit mode (a *Done* button appears on top).
+- Multi-select points: **drag a marquee starting from empty space** (starting on a
+  point drags that point) or Shift-click; drag any selected point to move them together.
+- If a *Crop* panel shows up, the user grabbed the texture Rectangle, not the shape.
+
+## v2 gotchas
+- Figma MCP on a **Starter plan hits its tool-call limit within a few calls**
+  (`use_figma`, screenshots included). The drag-&-drop SVG path is free and unlimited —
+  prefer it for delivery; use the MCP only when you have quota.
+- Canva import: serve the file from a URL that answers **HEAD** requests (Canva
+  probes with HEAD before fetching — S3 presigned GET URLs fail with 403). A raw
+  gist URL works; delete the gist after import.
+- Text inside SVG imports into Figma as real text nodes; pick a font family that
+  exists there (Figma will offer a substitute otherwise).

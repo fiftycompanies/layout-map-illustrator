@@ -29,6 +29,22 @@ The trick that actually works:
 | 3 | `scripts/restyle.py` | Nano Banana Pro restyles the base to watercolor/cartoon (keeps positions, drops text) |
 | 4 | `scripts/overlay_labels.py` | Stamp every number/name with a font + white halo at the exact coords |
 
+## v2 — Layered editable map (Figma-ready)
+
+v1 gives you a pretty flat PNG. **v2 gives you an SVG where every element is its own
+editable layer** — drag it into Figma and reshape the land outline, widen the river,
+move individual trees, edit every number as native text. Watercolor texture is applied
+as a clip mask, so **reshaping the outline re-flows the texture automatically**.
+
+| Step | Script | Does |
+|------|--------|------|
+| 1 | [`vtracer`](https://github.com/visioncortex/vtracer) | Vectorize the source terrain (stacked SVG) |
+| 2 | `scripts/split_by_color.py` | Split stacked paths into semantic layers (water / roads / boundary / detail) |
+| 3 | `scripts/land_shape.py` | Boolean-subtract paper from the base → **one editable land polygon** (svgpathtools + shapely) |
+| 4 | `scripts/gen_textures.py` | Generate seamless watercolor washes + a tree/bush/building sticker sheet |
+| 5 | `scripts/cut_sprites.py` | Cut the sticker sheet into individual transparent PNGs |
+| 6 | (compose per map) | Assemble one layered SVG: shapes + clip-mask textures + sticker assets + pads + text labels + a copy-paste asset palette |
+
 See [`SKILL.md`](SKILL.md) for the full workflow and the gotchas we learned the hard way.
 
 ## Install (as a Claude Code skill)
