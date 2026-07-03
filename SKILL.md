@@ -92,6 +92,17 @@ background"). Cut the sheet into individual transparent PNGs (connected componen
   users copy-paste more trees.
 - Layer order: paper → land → water → roads → paved → boundary → detail → trees → pads → labels → palette.
 
+**6b. Tones — same shapes, different skin**
+Because geometry and textures are decoupled, extra tones are just new assets:
+- `watercolor` — watercolor washes + watercolor sticker trees.
+- `cartoon` — **no textures**: flat fills (land orange, water teal, road dark orange),
+  bold-outline cartoon sticker sheet (trees, bush, cabin, wagon, compass rose); skip
+  the boundary/detail layers for a clean mobile-game look.
+- `realistic` — aerial-photo seamless textures (grass / river water / dirt path) +
+  a photorealistic tree sticker sheet ("seen from a high angle, resort map style").
+Keep a small role map (pineA/leafB/bush/cabin → sprite filename) per tone so the same
+tree-placement list renders in every tone.
+
 **7. Deliver & verify** — screenshot the SVG headless (`chrome --headless --screenshot
 --force-device-scale-factor=2`) and eyeball region crops. Then hand over the SVG:
 **drag & drop into Figma** imports every group as native, editable layers.
